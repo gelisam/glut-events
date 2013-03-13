@@ -40,4 +40,4 @@ The goal is to allow you to write GLUT programs as an infinite tree of alternati
 long term goal
 --------------
 
-The above doesn't look to hard to implement. The hard part would be to allow waiting on multiple events (C-style select()), forking cooperative threads, sending events between threads, and releasing GLUT's idle callback when no threads are waiting for input. I still have no idea how to do this in a typesafe way, though, so don't hold your breath!
+The above doesn't look to hard to implement. The hard part would be to allow waiting on multiple events (C-style <tt>select()</tt>), forking cooperative threads, sending events between threads, and releasing GLUT's idle callback when no threads are waiting for input. I still have no idea how to do this in a typesafe way, though, so don't hold your breath!
