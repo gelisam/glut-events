@@ -24,10 +24,10 @@ The purpose of this library will be to offer a Haskell-style wrapper around GLUT
 The goal is to allow you to write GLUT programs as an infinite tree of alternatives in some yet-to-be-determined monad:
 
     glutMessage = do clear [ColorBuffer]
-                     renderString StrokeFont "are you sure? (y/n)"
+                     renderString Helvetica18 "are you sure? (y/n)"
                      swapBuffers
     
-    glut-main = do lift $ glutMessage "are you sure? (y/n)"
+    glut_main = do lift $ glutMessage "are you sure? (y/n)"
                    Char c <- getKeypress
                    case c of
                      'y' -> lift $ glutMessage "full steam ahead!"
