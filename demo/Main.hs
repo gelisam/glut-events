@@ -23,12 +23,18 @@ displayMessage s = do clear [ColorBuffer]
 
 
 withGlutMain :: IO () -> IO ()
-withGlutMain glutMain = do displayCallback $= glutMain
+withGlutMain glutMain = do displayCallback $= do reset
+                                                 glutMain
                            mainLoop
+                        where
+  reset = displayCallback $= noop
+  noop = return ()
 
 withKeypress :: (Key -> IO ()) -> IO ()
 withKeypress cc = keyboardMouseCallback $= Just handleAndContinue where
-  handleAndContinue k _ _ _ = cc k
+  handleAndContinue k _ _ _ = do reset
+                                 cc k
+  reset = keyboardMouseCallback $= Nothing
 
 
 
