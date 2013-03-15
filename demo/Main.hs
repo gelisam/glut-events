@@ -19,13 +19,20 @@ renderText (x, y) h s = preservingMatrix $ do translate (Vector3 x y 0.0)
 -- the top left, with a font size of 5% of the window.
 displayMessage :: String -> IO ()
 displayMessage s = do clear [ColorBuffer]
-                      renderText (-0.8, 0.5) 0.1 s
+                      renderText (-0.9, 0.5) 0.1 s
                       swapBuffers
 
 
 
 glutMain :: IO ()
-glutMain = quitSequence
+glutMain = do displayMessage "Are you sure? (y/n)"
+              let loop (Char 'y') = do displayMessage "Full steam ahead, then!"
+                                       addTimerCallback 1000 $ quitSequence
+                  loop (Char 'n') = do displayMessage "Your loss."
+                                       addTimerCallback 1000 $ quitSequence
+                  loop _ = do displayMessage "Please answer with 'y' or 'n'."
+                              addTimerCallback 1000 glutMain
+              withKeypress loop
 
 
 quitSequence :: IO ()
