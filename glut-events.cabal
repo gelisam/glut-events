@@ -9,16 +9,18 @@ Maintainer:          gelisam@gmail.com
 Category:            Graphics
 Build-type:          Simple
 -- Extra-source-files:  
-Cabal-version:       >=1.2
+Cabal-version:       >=1.8
 
 Library
   Exposed-modules:     Graphics.UI.GLUT.Events
-  Build-depends:       base >= 4 && < 5
+  Build-depends:       base >= 4 && < 5,
+                       GLUT >= 2.3 && < 3
   -- Other-modules:       
 
 executable glut-events-demo
   build-depends:  base >= 4 && < 5,
                   OpenGL >= 2.5 && < 3, 
-                  GLUT >= 2.3 && < 3
+                  GLUT >= 2.3 && < 3,
+                  glut-events >= 0.1 && < 1
   main-is:        Main.hs
   hs-source-dirs: demo

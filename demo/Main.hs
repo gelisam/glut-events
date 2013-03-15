@@ -3,6 +3,7 @@ module Main where
 import System.Exit
 import Graphics.UI.GLUT
 import Graphics.UI.GLUT.Fonts
+import Graphics.UI.GLUT.Events
 
 
 scale_uniformly :: GLdouble -> IO ()
@@ -20,21 +21,6 @@ displayMessage :: String -> IO ()
 displayMessage s = do clear [ColorBuffer]
                       renderText (-0.8, 0.5) 0.1 s
                       swapBuffers
-
-
-withGlutMain :: IO () -> IO ()
-withGlutMain glutMain = do displayCallback $= do reset
-                                                 glutMain
-                           mainLoop
-                        where
-  reset = displayCallback $= noop
-  noop = return ()
-
-withKeypress :: (Key -> IO ()) -> IO ()
-withKeypress cc = keyboardMouseCallback $= Just handleAndContinue where
-  handleAndContinue k _ _ _ = do reset
-                                 cc k
-  reset = keyboardMouseCallback $= Nothing
 
 
 
