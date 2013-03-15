@@ -22,17 +22,21 @@ displayMessage s = do clear [ColorBuffer]
                       swapBuffers
 
 
+withKeypress :: (Key -> IO ()) -> IO ()
+withKeypress cc = keyboardMouseCallback $= Just handleAndContinue where
+  handleAndContinue k _ _ _ = cc k
+
+
+
 glutMain :: IO ()
 glutMain = quitSequence
 
 
 quitSequence :: IO ()
 quitSequence = do displayMessage "Press ESC to quit."
-                  keyboardMouseCallback $= Just waitForEsc
-
-waitForEsc :: Key -> KeyState -> Modifiers -> Position -> IO ()
-waitForEsc (Char '\x1b' {-esc-}) _ _ _ = delayedExit
-waitForEsc _ _ _ _ = return ()
+                  let loop (Char '\x1b' {-esc-}) = delayedExit
+                      loop _ = withKeypress loop
+                  withKeypress loop
 
 delayedExit :: IO ()
 delayedExit = do displayMessage "Bye!"
