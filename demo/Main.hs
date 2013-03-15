@@ -27,11 +27,11 @@ displayMessage s = do clear [ColorBuffer]
 glutMain :: IO ()
 glutMain = do displayMessage "Are you sure? (y/n)"
               let loop (Char 'y') = do displayMessage "Full steam ahead, then!"
-                                       addTimerCallback 1000 $ quitSequence
+                                       afterDelay 1000 $ quitSequence
                   loop (Char 'n') = do displayMessage "Your loss."
-                                       addTimerCallback 1000 $ quitSequence
+                                       afterDelay 1000 $ quitSequence
                   loop _ = do displayMessage "Please answer with 'y' or 'n'."
-                              addTimerCallback 1000 glutMain
+                              afterDelay 1000 glutMain
               withKeypress loop
 
 
@@ -43,13 +43,13 @@ quitSequence = do displayMessage "Press ESC to quit."
 
 delayedExit :: IO ()
 delayedExit = do displayMessage "Bye!"
-                 addTimerCallback 1000 $ exitSuccess
+                 afterDelay 1000 $ exitSuccess
 
 
 testTimeouts :: Int -> IO ()
 testTimeouts 0 = quitSequence
 testTimeouts n = do displayMessage $ show n
-                    addTimerCallback 500 $ testTimeouts $ n-1
+                    afterDelay 1000 $ testTimeouts $ n-1
 
 
 main = do getArgsAndInitialize
