@@ -25,8 +25,12 @@ displayMessage s = do clear [ColorBuffer]
 drawWindow :: IO ()
 drawWindow = displayMessage "Press ESC to quit."
 
+delayedExit :: IO ()
+delayedExit = do displayMessage "Bye!"
+                 addTimerCallback 1000 $ exitSuccess
+
 handleEvents :: Key -> KeyState -> Modifiers -> Position -> IO ()
-handleEvents (Char '\x1b' {-esc-}) _ _ _ = exitSuccess
+handleEvents (Char '\x1b' {-esc-}) _ _ _ = delayedExit
 handleEvents _ _ _ _ = return ()
 
 
