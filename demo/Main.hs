@@ -22,22 +22,26 @@ displayMessage s = do clear [ColorBuffer]
                       swapBuffers
 
 
-drawWindow :: IO ()
-drawWindow = displayMessage "Press ESC to quit."
+glutMain :: IO ()
+glutMain = quitSequence
+
+
+quitSequence :: IO ()
+quitSequence = do displayMessage "Press ESC to quit."
+                  keyboardMouseCallback $= Just waitForEsc
+
+waitForEsc :: Key -> KeyState -> Modifiers -> Position -> IO ()
+waitForEsc (Char '\x1b' {-esc-}) _ _ _ = delayedExit
+waitForEsc _ _ _ _ = return ()
 
 delayedExit :: IO ()
 delayedExit = do displayMessage "Bye!"
                  addTimerCallback 1000 $ exitSuccess
 
-handleEvents :: Key -> KeyState -> Modifiers -> Position -> IO ()
-handleEvents (Char '\x1b' {-esc-}) _ _ _ = delayedExit
-handleEvents _ _ _ _ = return ()
-
 
 main = do getArgsAndInitialize
-          createWindow "99 bottles"
+          createWindow "glut-events demo"
           
-          keyboardMouseCallback $= Just handleEvents
-          displayCallback $= drawWindow
+          displayCallback $= glutMain
           
           mainLoop
