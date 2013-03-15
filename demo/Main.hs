@@ -46,7 +46,13 @@ delayedExit = do displayMessage "Bye!"
                  addTimerCallback 1000 $ exitSuccess
 
 
+testTimeouts :: Int -> IO ()
+testTimeouts 0 = quitSequence
+testTimeouts n = do displayMessage $ show n
+                    addTimerCallback 1000 $ testTimeouts $ n-1
+
+
 main = do getArgsAndInitialize
           createWindow "glut-events demo"
           
-          withGlutMain glutMain
+          withGlutMain $ testTimeouts 10
