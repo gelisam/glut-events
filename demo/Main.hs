@@ -22,6 +22,10 @@ displayMessage s = do clear [ColorBuffer]
                       swapBuffers
 
 
+withGlutMain :: IO () -> IO ()
+withGlutMain glutMain = do displayCallback $= glutMain
+                           mainLoop
+
 withKeypress :: (Key -> IO ()) -> IO ()
 withKeypress cc = keyboardMouseCallback $= Just handleAndContinue where
   handleAndContinue k _ _ _ = cc k
@@ -46,6 +50,4 @@ delayedExit = do displayMessage "Bye!"
 main = do getArgsAndInitialize
           createWindow "glut-events demo"
           
-          displayCallback $= glutMain
-          
-          mainLoop
+          withGlutMain glutMain
