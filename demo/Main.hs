@@ -49,7 +49,7 @@ delayedExit = do displayMessage "Bye!"
 testTimeouts :: Int -> IO ()
 testTimeouts 0 = quitSequence
 testTimeouts n = do displayMessage $ show n
-                    addTimerCallback 1000 $ testTimeouts $ n-1
+                    addTimerCallback 500 $ testTimeouts $ n-1
 
 
 main = do getArgsAndInitialize
