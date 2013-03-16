@@ -55,4 +55,4 @@ testTimeouts n = do displayMessage $ show n
 main = do getArgsAndInitialize
           createWindow "glut-events demo"
           
-          withGlutMain $ testTimeouts 10
+          withGlutMain glutMain
