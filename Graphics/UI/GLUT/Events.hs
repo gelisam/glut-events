@@ -17,9 +17,16 @@ withKeypress cc = keyboardMouseCallback $= Just handleAndContinue where
                                  cc k
   reset = keyboardMouseCallback $= Nothing
 
+
 -- in milliseconds.
--- please use this instead of addTimerCallback, as the latter doesn't
--- work very well with delays larger than 900 milliseconds.
+-- please use this instead of addTimerCallback,
+-- as the latter often triggers too early.
 afterDelay :: Timeout -> IO () -> IO ()
-afterDelay d cc | d > 500 = addTimerCallback 500 $ afterDelay (d-500) cc
-afterDelay d cc | otherwise = addTimerCallback d cc
+afterDelay d cc = do t0 <- get elapsedTime
+                     waitUntil (t0 + d)
+                  where
+  waitUntil t_goal = do t <- get elapsedTime
+                        if t < t_goal
+                           then addTimerCallback (t_goal - t) $
+                                waitUntil t_goal
+                           else cc
