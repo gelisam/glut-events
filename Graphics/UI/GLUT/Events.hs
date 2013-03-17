@@ -3,30 +3,55 @@ module Graphics.UI.GLUT.Events where
 import Graphics.UI.GLUT
 
 
+data EventHook e = EventHook { registerCallback :: (e -> IO ()) -> IO ()
+                             , unregisterCallback :: IO ()
+                             }
+
+withNextEvent :: EventHook e -> (e -> IO ()) -> IO ()
+withNextEvent h cc = registerCallback h handler where
+  handler e = do unregisterCallback h
+                 cc e
+
+subevent :: EventHook e -> (e -> Maybe a) -> EventHook a
+subevent h p = EventHook register unregister where
+  maybeForward cc e = case p e of
+                        Just x -> cc x
+                        Nothing -> return ()
+  register cc = registerCallback h $ maybeForward cc
+  unregister = unregisterCallback h
+
+
+displayHook :: EventHook ()
+displayHook = EventHook register unregister where
+  register f = displayCallback $= f ()
+  unregister = displayCallback $= return ()
+
 withGlutMain :: IO () -> IO ()
-withGlutMain glutMain = do displayCallback $= do reset
-                                                 glutMain
+withGlutMain glutMain = do withNextEvent displayHook $ const glutMain
                            mainLoop
-                        where
-  reset = displayCallback $= noop
-  noop = return ()
 
 
-withKeyboardMouseEvent :: (Key -> KeyState -> Modifiers -> Position -> IO ()) -> IO ()
-withKeyboardMouseEvent cc = keyboardMouseCallback $= Just handleAndContinue where
-  handleAndContinue k s m p = do reset
-                                 cc k s m p
-  reset = keyboardMouseCallback $= Nothing
+keyboardMouseHook :: EventHook (Key, KeyState, Modifiers, Position)
+keyboardMouseHook = EventHook register unregister where
+  curry4 f w x y z = f (w, x, y, z)
+  register f = keyboardMouseCallback $= Just (curry4 f)
+  unregister = keyboardMouseCallback $= Nothing
+
+keydownHook :: EventHook Key
+keydownHook = subevent keyboardMouseHook isDown where
+  isDown (k, Down, _, _) = Just k
+  isDown _ = Nothing
+
+keyupHook :: EventHook Key
+keyupHook = subevent keyboardMouseHook isUp where
+  isUp (k, Up, _, _) = Just k
+  isUp _ = Nothing
 
 withKeydown :: (Key -> IO ()) -> IO ()
-withKeydown cc = withKeyboardMouseEvent handleEvent where
-  handleEvent k Down _ _ = cc k
-  handleEvent _ _ _ _ = withKeydown cc
+withKeydown = withNextEvent keydownHook
 
 withKeyup :: (Key -> IO ()) -> IO ()
-withKeyup cc = withKeyboardMouseEvent handleEvent where
-  handleEvent k Up _ _ = cc k
-  handleEvent _ _ _ _ = withKeyup cc
+withKeyup = withNextEvent keyupHook
 
 withKeypress :: (Key -> IO ()) -> IO ()
 withKeypress cc = withKeydown untilReleased where
