@@ -11,11 +11,28 @@ withGlutMain glutMain = do displayCallback $= do reset
   reset = displayCallback $= noop
   noop = return ()
 
-withKeypress :: (Key -> IO ()) -> IO ()
-withKeypress cc = keyboardMouseCallback $= Just handleAndContinue where
-  handleAndContinue k _ _ _ = do reset
-                                 cc k
+
+withKeyboardMouseEvent :: (Key -> KeyState -> Modifiers -> Position -> IO ()) -> IO ()
+withKeyboardMouseEvent cc = keyboardMouseCallback $= Just handleAndContinue where
+  handleAndContinue k s m p = do reset
+                                 cc k s m p
   reset = keyboardMouseCallback $= Nothing
+
+withKeydown :: (Key -> IO ()) -> IO ()
+withKeydown cc = withKeyboardMouseEvent handleEvent where
+  handleEvent k Down _ _ = cc k
+  handleEvent _ _ _ _ = withKeydown cc
+
+withKeyup :: (Key -> IO ()) -> IO ()
+withKeyup cc = withKeyboardMouseEvent handleEvent where
+  handleEvent k Up _ _ = cc k
+  handleEvent _ _ _ _ = withKeyup cc
+
+withKeypress :: (Key -> IO ()) -> IO ()
+withKeypress cc = withKeydown untilReleased where
+  untilReleased k = withKeyup $ \k' -> if k == k'
+                                         then cc k
+                                         else untilReleased k
 
 
 -- in milliseconds.
