@@ -1,5 +1,6 @@
 module Graphics.UI.GLUT.Events where
 
+import Control.Monad
 import Graphics.UI.GLUT
 
 
@@ -12,6 +13,10 @@ withNextEvent h cc = registerCallback h handler where
   handler e = do unregisterCallback h
                  cc e
 
+untilEvent :: EventHook () -> IO () -> IO ()
+untilEvent h = withNextEvent h . const
+
+
 subevent :: EventHook e -> (e -> Maybe a) -> EventHook a
 subevent h p = EventHook register unregister where
   maybeForward cc e = case p e of
@@ -20,6 +25,10 @@ subevent h p = EventHook register unregister where
   register cc = registerCallback h $ maybeForward cc
   unregister = unregisterCallback h
 
+exactEvent :: Eq e => EventHook e -> e -> EventHook ()
+exactEvent h e = subevent h isEqual where
+  isEqual = guard . (== e)
+
 
 displayHook :: EventHook ()
 displayHook = EventHook register unregister where
@@ -27,7 +36,7 @@ displayHook = EventHook register unregister where
   unregister = displayCallback $= return ()
 
 withGlutMain :: IO () -> IO ()
-withGlutMain glutMain = do withNextEvent displayHook $ const glutMain
+withGlutMain glutMain = do untilEvent displayHook glutMain
                            mainLoop
 
 
@@ -55,9 +64,7 @@ withKeyup = withNextEvent keyupHook
 
 withKeypress :: (Key -> IO ()) -> IO ()
 withKeypress cc = withKeydown untilReleased where
-  untilReleased k = withKeyup $ \k' -> if k == k'
-                                         then cc k
-                                         else untilReleased k
+  untilReleased k = untilEvent (exactEvent keyupHook k) $ cc k
 
 
 -- in milliseconds.
