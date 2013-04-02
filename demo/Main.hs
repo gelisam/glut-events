@@ -4,6 +4,7 @@ import System.Exit
 import Graphics.UI.GLUT
 import Graphics.UI.GLUT.Fonts
 import Graphics.UI.GLUT.Events
+import Control.Monad.Trans.Suspend
 
 
 scale_uniformly :: GLdouble -> IO ()
@@ -52,7 +53,25 @@ testTimeouts n = do displayMessage $ show n
                     afterDelay 1000 $ testTimeouts $ n-1
 
 
+echoKeys :: Suspend Char (IO ())
+echoKeys = helper "" where
+  helper cs = do c <- nextEvent
+                 case c of
+                   '\x0d' {-enter-} -> return $ putStrLn $ reverse cs
+                   _ -> do let act1 = putStrLn $ c:""
+                           act2 <- helper $ c:cs
+                           return $ do act1
+                                       act2
+
+keydownResume :: Suspend Char (IO ()) -> IO ()
+keydownResume (Done act) = do act
+                              exitSuccess
+keydownResume (Suspended cc) = withKeypress resume where
+  resume (Char c) = keydownResume (cc c)
+  resume _        = withKeypress resume
+
 main = do getArgsAndInitialize
           createWindow "glut-events demo"
           
-          withGlutMain glutMain
+          withGlutMain $ do displayMessage "type then press ENTER."
+                            keydownResume echoKeys

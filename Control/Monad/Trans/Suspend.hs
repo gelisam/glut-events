@@ -5,6 +5,10 @@ import Control.Monad.Trans
 
 data Suspend e a = Done a | Suspended (e -> Suspend e a)
 
+nextEvent :: Suspend e e
+nextEvent = Suspended Done
+
+
 instance Functor (Suspend e) where
   fmap f (Done x) = Done (f x)
   fmap f (Suspended cc) = Suspended (fmap f . cc)
