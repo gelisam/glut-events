@@ -1,15 +1,36 @@
 module Control.Monad.Trans.Suspend where
 
 import Control.Monad.Trans
+import Control.Monad.Identity
+
+
+-- As is often the case, the MonadTransformer version is much harder to understand
+-- than the plain version. For your convenience, here is how (Suspend e) would be
+-- implemented if it wasn't defined as (SuspendT e Identity).
+-- 
+--    data Suspend e a = Done a | Suspended (e -> Suspend e a)
+--    
+--    nextEvent :: Suspend e e
+--    nextEvent = Suspended Done
+--    
+--    
+--    instance Functor (Suspend e) where
+--      fmap f (Done x) = Done (f x)
+--      fmap f (Suspended cc) = Suspended (fmap f . cc)
+--    
+--    instance Monad (Suspend e) where
+--      return = Done
+--      Done x >>= f = f x
+--      Suspended cc >>= f = Suspended $ \e -> do x <- cc e
+--                                                f x
 
 
 -- From the inside, a suspendable computation of type (Suspend e a) is similar to a
 -- (Reader e a), except you get a new value every time you read it (using nextEvent).
 
-data Suspend e a = Done a | Suspended (e -> Suspend e a)
+nextEvent :: Monad m => SuspendT e m e
+nextEvent = SuspendT $ return $ Suspended $ SuspendT . return . Done
 
-nextEvent :: Suspend e e
-nextEvent = Suspended Done
 
 -- From the outside, a suspendable computation consumes an unspecified number of events
 -- of type e, then halts with a value of type a. The difference between this and a
@@ -17,12 +38,14 @@ nextEvent = Suspended Done
 -- events, so it could generate them using side effects.
 
 isDone :: Suspend e a -> Maybe a
-isDone (Done x) = Just x
-isDone _ = Nothing
+isDone sx = case runIdentity $ runSuspendT sx of
+              Done x -> Just x
+              _ -> Nothing
 
 sendEvent :: e -> Suspend e a -> Suspend e a
-sendEvent _ (Done x) = Done x
-sendEvent e (Suspended cc) = cc e
+sendEvent e sx = case runIdentity $ runSuspendT sx of
+  Done x -> SuspendT $ return $ Done x
+  Suspended cc -> cc e
 
 sendEvents :: Monad m => Suspend e a -> m e -> m a
 sendEvents sx gen_e = case isDone sx of
@@ -31,12 +54,29 @@ sendEvents sx gen_e = case isDone sx of
                                       sendEvents (sendEvent e sx) gen_e
 
 
-instance Functor (Suspend e) where
-  fmap f (Done x) = Done (f x)
-  fmap f (Suspended cc) = Suspended (fmap f . cc)
+-- The monad transformer version is more useful, as the suspendable computation can
+-- cause side-effects in between its event requests, possibly affecting which events
+-- it will receive.
 
-instance Monad (Suspend e) where
-  return = Done
-  Done x >>= f = f x
-  Suspended cc >>= f = Suspended $ \e -> do x <- cc e
-                                            f x
+data Suspend1 e m a = Done a | Suspended (e -> m a)
+data SuspendT e m a = SuspendT { runSuspendT :: m (Suspend1 e (SuspendT e m) a) }
+type Suspend e a = SuspendT e Identity a
+
+instance MonadTrans (SuspendT e) where
+  lift mx = SuspendT $ do x <- mx
+                          return $ Done x
+
+instance Functor m => Functor (Suspend1 e m) where
+  fmap f (Done a) = Done $ f a
+  fmap f (Suspended cc) = Suspended $ fmap f . cc
+
+instance Functor m => Functor (SuspendT e m) where
+  fmap f tx = SuspendT $ fmap (fmap f) $ runSuspendT tx
+
+instance Monad m => Monad (SuspendT e m) where
+  return = SuspendT . return . Done
+  tx >>= f = SuspendT $ do
+               sx <- runSuspendT tx
+               case sx of
+                 Done x       -> runSuspendT $ f x
+                 Suspended cc -> return $ Suspended $ \e -> cc e >>= f
