@@ -64,10 +64,12 @@ echoKeys = helper "" where
                                        act2
 
 keydownResume :: Suspend Char (IO ()) -> IO ()
-keydownResume (Done act) = do act
-                              exitSuccess
-keydownResume (Suspended cc) = withKeypress resume where
-  resume (Char c) = keydownResume (cc c)
+keydownResume sx = case isDone sx of
+                     Just act -> do act
+                                    exitSuccess
+                     Nothing -> withKeypress resume
+                   where
+  resume (Char c) = keydownResume (sendEvent c sx)
   resume _        = withKeypress resume
 
 main = do getArgsAndInitialize
