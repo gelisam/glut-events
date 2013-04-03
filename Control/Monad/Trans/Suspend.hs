@@ -89,3 +89,24 @@ instance Monad m => Monad (SuspendT e m) where
                case sx of
                  Done x       -> runSuspendT $ f x
                  Suspended cc -> return $ Suspended $ \e -> cc e >>= f
+
+
+sendEventT :: Monad m => e -> SuspendT e m a -> SuspendT e m a
+sendEventT e tx = SuspendT $ do sx <- runSuspendT tx
+                                case sx of
+                                  Done x -> return sx
+                                  Suspended cc -> runSuspendT $ cc e
+
+sendEventsT :: Monad m => [e] -> SuspendT e m a -> m a
+sendEventsT (e:es) tx = do sx <- runSuspendT tx
+                           case sx of
+                             Done x -> return x
+                             Suspended cc -> sendEventsT es (cc e)
+
+generateEventsT :: Monad m => SuspendT e m a -> m e -> m a
+generateEventsT tx gen_e = do sx <- runSuspendT tx
+                              case sx of
+                                Done x -> return x
+                                Suspended cc -> do
+                                  e <- gen_e
+                                  generateEventsT (cc e) gen_e
