@@ -4,6 +4,7 @@ import System.Exit
 import Graphics.UI.GLUT
 import Graphics.UI.GLUT.Fonts
 import Graphics.UI.GLUT.Events
+import Control.Monad.Trans
 import Control.Monad.Trans.Suspend
 
 
@@ -53,24 +54,23 @@ testTimeouts n = do displayMessage $ show n
                     afterDelay 1000 $ testTimeouts $ n-1
 
 
-echoKeys :: Suspend Char (IO ())
+echoKeys :: SuspendT Char IO ()
 echoKeys = helper "" where
   helper cs = do c <- nextEvent
                  case c of
-                   '\x0d' {-enter-} -> return $ putStrLn $ reverse cs
-                   _ -> do let act1 = putStrLn $ c:""
-                           act2 <- helper $ c:cs
-                           return $ do act1
-                                       act2
+                   '\x0d' {-enter-} -> do lift $ putStrLn $ reverse cs
+                                          return ()
+                   _ -> do lift $ putStrLn $ c:""
+                           helper $ c:cs
 
-keydownResume :: Suspend Char (IO ()) -> IO ()
-keydownResume sx = case isDone sx of
-                     Just act -> do act
-                                    exitSuccess
-                     Nothing -> withKeypress resume
+keydownResume :: SuspendT Char IO () -> IO ()
+keydownResume tx = do sx <- runSuspendT tx
+                      case sx of
+                        Done () -> exitSuccess
+                        Suspended cc -> withKeypress $ resume cc
                    where
-  resume (Char c) = keydownResume (sendEvent c sx)
-  resume _        = withKeypress resume
+  resume cc (Char c) = keydownResume (cc c)
+  resume cc _        = withKeypress $ resume cc
 
 main = do getArgsAndInitialize
           createWindow "glut-events demo"
