@@ -37,21 +37,30 @@ nextEvent = SuspendT $ return $ Suspended $ SuspendT . return . Done
 -- function of type ([e] -> a) is that the caller gets to know when to stop generating
 -- events, so it could generate them using side effects.
 
+runSuspend :: Suspend e a -> Suspend1 e (SuspendT e Identity) a
+runSuspend = runIdentity . runSuspendT
+
 isDone :: Suspend e a -> Maybe a
-isDone sx = case runIdentity $ runSuspendT sx of
+isDone sx = case runSuspend sx of
               Done x -> Just x
               _ -> Nothing
 
 sendEvent :: e -> Suspend e a -> Suspend e a
-sendEvent e sx = case runIdentity $ runSuspendT sx of
-  Done x -> SuspendT $ return $ Done x
-  Suspended cc -> cc e
+sendEvent e sx = case runSuspend sx of
+                   Done x -> return x
+                   Suspended cc -> cc e
 
-sendEvents :: Monad m => Suspend e a -> m e -> m a
-sendEvents sx gen_e = case isDone sx of
-                        Just x -> return x
-                        Nothing -> do e <- gen_e
-                                      sendEvents (sendEvent e sx) gen_e
+sendEvents :: [e] -> Suspend e a -> a
+sendEvents (e:es) sx = case runSuspend sx of
+                         Done x -> x
+                         Suspended cc -> sendEvents es (cc e)
+
+generateEvents :: Monad m => Suspend e a -> m e -> m a
+generateEvents sx gen_e = case isDone sx of
+                            Just x -> return x
+                            Nothing -> do
+                              e <- gen_e
+                              generateEvents (sendEvent e sx) gen_e
 
 
 -- The monad transformer version is more useful, as the suspendable computation can
